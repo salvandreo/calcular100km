@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km V9 - Pro</title>
+    <title>Estratega 100km V10</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; --card-bg: white; --text: #1e293b; }
-        /* Modo Noche Manual y Automático */
         body.dark-mode { --bg: #0f172a; --card-bg: #1e293b; --text: #f1f5f9; --primary: #3b82f6; }
         
         body { font-family: system-ui, sans-serif; padding: 10px; background: var(--bg); color: var(--text); transition: 0.3s; }
         .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; border: 1px solid #e2e8f0; }
         
-        /* Barra de Progreso */
         .progress-container { width: 100%; background: #e2e8f0; height: 12px; border-radius: 6px; margin: 10px 0; overflow: hidden; }
         #progressBar { width: 0%; height: 100%; background: var(--success); transition: 0.5s; }
 
@@ -29,14 +27,15 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
         th { background: rgba(0,0,0,0.05); padding: 8px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); text-align: center; }
-        .target-box { background: #f0fdf4; color: #16a34a; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 5px; border: 1px solid #bbf7d0; }
+        
+        .target-box { background: #f0fdf4; color: #16a34a; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 5px; border: 1px solid #bbf7d0; line-height: 1.4; }
         body.dark-mode .target-box { background: #064e3b; color: #4ade80; border-color: #065f46; }
     </style>
 </head>
 <body onload="checkNightMode()">
 
     <div class="card">
-        <h2>🏁 Progreso Carrera: <span id="txtProgreso">0%</span></h2>
+        <h2>🏁 Progreso: <span id="txtProgreso">0%</span></h2>
         <div class="progress-container"><div id="progressBar"></div></div>
     </div>
 
@@ -65,12 +64,12 @@
             <div class="metric-card"><span>Ritmo Tramo</span><span id="vRitmo" class="val">-</span></div>
             <div class="metric-card"><span>Vel. Tramo</span><span id="vVel" class="val">-</span></div>
         </div>
-        <div id="vColchon" style="text-align:center; padding:10px; font-weight:bold; border-radius:8px;"></div>
+        <div id="vColchon" style="text-align:center; padding:10px; font-weight:bold; border-radius:8px; margin-bottom:8px;"></div>
         <div id="vTarget" class="target-box"></div>
     </div>
 
     <div class="card" id="cardHistorial" style="display:none;">
-        <h2>📜 Historial</h2>
+        <h2>📜 Historial de Tramos</h2>
         <table id="tabla">
             <thead><tr><th>KM</th><th>Ritmo</th><th>Vel.</th><th>Colchón</th></tr></thead>
             <tbody></tbody>
@@ -115,27 +114,40 @@
         const vel = 60 / ritmo;
         const colchon = Math.floor((fCorte - fLlegada) / 60000);
 
-        // Actualizar UI
+        // UI Principal
         document.getElementById('resultado').style.display = 'block';
         document.getElementById('cardHistorial').style.display = 'block';
         document.getElementById('vRitmo').innerText = fmtR(ritmo);
         document.getElementById('vVel').innerText = vel.toFixed(1) + " km/h";
         
-        // Colchón
         const divC = document.getElementById('vColchon');
         divC.innerText = "COLCHÓN: " + colchon + " MIN";
-        divC.style.background = colchon < 10 ? "var(--danger)" : "var(--success)";
+        divC.style.background = colchon < 15 ? "var(--danger)" : "var(--success)";
         divC.style.color = "white";
 
-        // Ritmo Objetivo para siguiente
+        // CÁLCULO DE RITMO OBJETIVO (CORREGIDO)
         if (i < DATOS.length - 1) {
             const sig = DATOS[i+1];
             const distSig = sig.km - actual.km;
             const fCorteSig = parseH(sig.corte);
-            let tDisp = (fCorteSig - fLlegada) / 60000;
-            if(tDisp < 0) tDisp += 1440;
-            const rNecesario = tDisp / distSig;
-            document.getElementById('vTarget').innerHTML = `Próximo punto: ${distSig}km<br>Ritmo máximo: ${fmtR(rNecesario)}`;
+            
+            // Tiempo disponible real para el siguiente punto
+            let tDispTotal = (fCorteSig - fLlegada) / 60000;
+            if(tDispTotal < 0) tDispTotal += 1440;
+
+            // Para no ir al límite, calculamos el ritmo para llegar con 10 min de margen extra
+            let tSeguro = tDispTotal - 10;
+            if(tSeguro <= 0) tSeguro = tDispTotal; // Si ya no hay margen, usamos el total
+
+            const rObjetivo = tSeguro / distSig;
+            
+            document.getElementById('vTarget').innerHTML = `
+                PRÓXIMO TRAMO (${distSig}km):<br>
+                <span style="font-size:0.85rem; opacity:0.8">Ritmo para ganar 10' de margen:</span><br>
+                <span style="font-size:1.3rem">${fmtR(rObjetivo)}</span>
+            `;
+        } else {
+            document.getElementById('vTarget').innerHTML = "🏁 ¡Último tramo! ¡A por la meta!";
         }
 
         // Barra Progreso
@@ -158,13 +170,22 @@
 
     function actualizarTabla(km, r, v, c) {
         const tbody = document.querySelector("#tabla tbody");
+        // Borra si ya existe para evitar duplicados al corregir
         let fila = tbody.querySelector(`tr[data-km="${km}"]`);
         if (fila) fila.remove();
 
         const row = tbody.insertRow();
         row.setAttribute('data-km', km);
-        row.innerHTML = `<td><b>${km}k</b></td><td>${fmtR(r).replace(' min/km','')}</td><td>${v.toFixed(1)}</td><td style="color:${c < 10 ? 'red' : 'green'}"><b>${c}'</b></td>`;
-        Array.from(tbody.querySelectorAll("tr")).sort((a, b) => parseFloat(a.getAttribute('data-km')) - parseFloat(b.getAttribute('data-km'))).forEach(tr => tbody.appendChild(tr));
+        row.innerHTML = `
+            <td><b>${km}k</b></td>
+            <td>${fmtR(r).replace(' min/km','')}</td>
+            <td>${v.toFixed(1)}</td>
+            <td style="color:${c < 15 ? 'red' : 'green'}"><b>${c}'</b></td>
+        `;
+        // Ordenar por KM
+        Array.from(tbody.querySelectorAll("tr"))
+            .sort((a, b) => parseFloat(a.getAttribute('data-km')) - parseFloat(b.getAttribute('data-km')))
+            .forEach(tr => tbody.appendChild(tr));
     }
 </script>
 </body>
