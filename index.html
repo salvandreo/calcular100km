@@ -3,32 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km - Final</title>
+    <title>Estratega 100km V8</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
         body { font-family: system-ui, sans-serif; padding: 10px; background: #f8fafc; color: #1e293b; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; border: 1px solid #e2e8f0; }
         h2 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.1rem; text-align: center; }
-        label { font-weight: bold; font-size: 0.8rem; color: #64748b; display: block; }
-        select, input { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        button { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .res-box { display: none; border-top: 4px solid var(--primary); }
+        label { font-weight: bold; font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .res-box { display: none; border-top: 4px solid var(--primary); margin-top: 10px; }
         .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
         .metric-card { background: #f1f5f9; padding: 10px; border-radius: 8px; text-align: center; }
         .val { display: block; font-size: 1rem; font-weight: 800; }
-        /* Estilo de la Tabla */
-        .tabla-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
-        th { background: #f1f5f9; padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: 500; }
-        .next-step { background: #f0fdf4; border: 1px solid var(--success); padding: 12px; border-radius: 8px; text-align: center; margin-top: 5px; }
+        th { background: #f1f5f9; padding: 8px; border-bottom: 2px solid #e2e8f0; text-align: center; }
+        td { padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>⏱️ Registro de Paso</h2>
-        <label>Punto de control:</label>
+        <label>Punto:</label>
         <select id="avi">
             <option value="1">Campos de golf (Km 13)</option>
             <option value="2">Camino la mina (Km 23)</option>
@@ -42,128 +39,106 @@
             <option value="10">Balsa Conseller (Km 82.5)</option>
             <option value="11">Castro (Km 92)</option>
         </select>
-        <label>Hora de llegada:</label>
         <input type="time" id="horaLlegada">
-        <button onclick="registrarPaso()">CALCULAR Y GUARDAR</button>
+        <button onclick="registrar()">CALCULAR Y GUARDAR</button>
     </div>
 
     <div id="resultado" class="card res-box">
         <div class="metric-grid">
             <div class="metric-card"><span>Ritmo Tramo</span><span id="vRitmo" class="val">-</span></div>
-            <div class="metric-card"><span>Velocidad Tramo</span><span id="vVel" class="val">-</span></div>
-            <div class="metric-card"><span>Colchón Actual</span><span id="vMargen" class="val">-</span></div>
-            <div class="metric-card"><span>KM Tramo</span><span id="vDist" class="val">-</span></div>
+            <div class="metric-card"><span>Vel. Tramo</span><span id="vVel" class="val">-</span></div>
         </div>
-        <div id="vSiguiente" class="next-step"></div>
+        <div id="vColchon" style="text-align:center; padding:10px; font-weight:bold; border-radius:8px;"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardHistorial" style="display:none;">
         <h2>📜 Historial de Tramos</h2>
-        <div class="tabla-container">
-            <table id="tablaHistorial">
-                <thead>
-                    <tr>
-                        <th>KM</th>
-                        <th>Ritmo</th>
-                        <th>Vel.</th>
-                        <th>Colchón</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <table id="tabla">
+            <thead>
+                <tr><th>KM</th><th>Ritmo</th><th>Vel.</th><th>Colchón</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 
 <script>
     const DATOS = [
-        { n: "Salida", km: 0, corte: "08:00", tSig: 180 },
-        { n: "Campos de golf", km: 13, corte: "11:00", tSig: 120 },
-        { n: "Camino la mina", km: 23, corte: "13:00", tSig: 140 },
-        { n: "Calle Algorfa COMIDA", km: 32, corte: "15:20", tSig: 160 },
-        { n: "El canal - Los quiles", km: 39, corte: "18:00", tSig: 50 },
-        { n: "Colegio el altet", km: 47, corte: "18:50", tSig: 170 },
-        { n: "Angelets", km: 58, corte: "21:40", tSig: 100 },
-        { n: "Calle Algorfa CENA", km: 66, corte: "23:20", tSig: 100 },
-        { n: "Niño del tambor", km: 73, corte: "01:00", tSig: 70 },
-        { n: "El rocío", km: 78, corte: "02:10", tSig: 110 },
-        { n: "Balsa Conseller", km: 82.5, corte: "04:00", tSig: 90 },
-        { n: "Castro", km: 92, corte: "05:30", tSig: 150 }
+        { km: 0, corte: "08:00" },
+        { km: 13, corte: "11:00" }, { km: 23, corte: "13:00" }, { km: 32, corte: "15:20" },
+        { km: 39, corte: "18:00" }, { km: 47, corte: "18:50" }, { km: 58, corte: "21:40" },
+        { km: 66, corte: "23:20" }, { km: 73, corte: "01:00" }, { km: 78, corte: "02:10" },
+        { km: 82.5, corte: "04:00" }, { km: 92, corte: "05:30" }
     ];
 
-    let historialUsuario = { 0: "08:00" }; 
+    let historialHoras = { 0: "08:00" };
 
-    function formatRitmo(decimal) {
-        if (!decimal || decimal === Infinity) return "00:00";
-        const totalSeg = Math.round(decimal * 60);
-        const mm = Math.floor(totalSeg / 60);
-        const ss = totalSeg % 60;
-        return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
-    }
+    function registrar() {
+        const i = document.getElementById('avi').value;
+        const h = document.getElementById('horaLlegada').value;
+        if(!h) return;
 
-    function aFecha(hStr) {
-        const [h, m] = hStr.split(':').map(Number);
-        const dia = (h < 8) ? 2 : 1;
-        return new Date(2026, 0, dia, h, m);
-    }
-
-    function registrarPaso() {
-        const i = parseInt(document.getElementById('avi').value);
-        const hLlegadaStr = document.getElementById('horaLlegada').value;
-        if (!hLlegadaStr) return;
-
-        historialUsuario[i] = hLlegadaStr;
-
+        historialHoras[i] = h;
         const actual = DATOS[i];
-        let idxAnt = i - 1;
-        while (idxAnt >= 0 && !historialUsuario[idxAnt]) { idxAnt--; }
         
-        const anterior = DATOS[idxAnt];
-        const hSalidaAnt = historialUsuario[idxAnt];
-
-        const fLlegada = aFecha(hLlegadaStr);
-        const fSalidaAnt = aFecha(hSalidaAnt);
-        const fCorte = aFecha(actual.corte);
-
-        const distTramo = actual.km - anterior.km;
-        let tiempoTramoMs = fLlegada - fSalidaAnt;
-        if (tiempoTramoMs < 0) tiempoTramoMs += 24 * 60 * 60 * 1000;
+        let antIdx = i - 1;
+        while(antIdx >= 0 && !historialHoras[antIdx]) antIdx--;
         
-        const tiempoTramoMin = tiempoTramoMs / 60000;
-        const ritmoTramo = tiempoTramoMin / distTramo;
-        const velTramo = 60 / ritmoTramo;
-        const margenMin = Math.floor((fCorte - fLlegada) / 60000);
+        const fLlegada = parseH(h);
+        const fSalidaAnterior = parseH(historialHoras[antIdx]);
+        const fCorte = parseH(actual.corte);
+
+        const distTramo = actual.km - DATOS[antIdx].km;
+        let tiempoMin = (fLlegada - fSalidaAnterior) / 60000;
+        if(tiempoMin < 0) tiempoMin += 1440;
+
+        const ritmoDecimal = tiempoMin / distTramo;
+        const velocidad = 60 / ritmoDecimal;
+        const colchon = Math.floor((fCorte - fLlegada) / 60000);
 
         document.getElementById('resultado').style.display = 'block';
-        document.getElementById('vRitmo').innerText = formatRitmo(ritmoTramo) + " min/km";
-        document.getElementById('vVel').innerText = velTramo.toFixed(1) + " km/h";
-        document.getElementById('vDist').innerText = distTramo + " km";
+        document.getElementById('cardHistorial').style.display = 'block';
+        document.getElementById('vRitmo').innerText = fmtR(ritmoDecimal);
+        document.getElementById('vVel').innerText = velocidad.toFixed(1) + " km/h";
         
-        const vMargen = document.getElementById('vMargen');
-        vMargen.innerText = (margenMin >= 0 ? "+" : "") + margenMin + " min";
-        vMargen.style.color = margenMin < 10 ? "var(--danger)" : "var(--success)";
+        const divC = document.getElementById('vColchon');
+        divC.innerText = "COLCHÓN ACTUAL: " + colchon + " MIN";
+        divC.style.background = colchon < 10 ? "#fee2e2" : "#dcfce7";
+        divC.style.color = colchon < 10 ? "red" : "green";
 
-        document.getElementById('vSiguiente').innerHTML = `
-            Tienes <b>${actual.tSig + margenMin} min</b> para el siguiente punto.
-        `;
-
-        actualizarTabla(actual.km, ritmoTramo, velTramo, margenMin);
+        actualizarTabla(actual.km, ritmoDecimal, velocidad, colchon);
     }
 
-    function actualizarTabla(km, ritmo, vel, colchon) {
-        const tbody = document.querySelector("#tablaHistorial tbody");
-        const filas = tbody.querySelectorAll("tr");
-        filas.forEach(f => { if(f.cells[0].innerText == km) f.remove(); });
+    function parseH(s) {
+        const [h, m] = s.split(':').map(Number);
+        return new Date(2026, 0, (h < 8 ? 2 : 1), h, m);
+    }
+
+    function fmtR(d) {
+        const m = Math.floor(d), s = Math.round((d - m) * 60);
+        return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')} min/km`;
+    }
+
+    function actualizarTabla(km, r, v, c) {
+        const tbody = document.querySelector("#tabla tbody");
+        
+        // CORRECCIÓN: Buscamos la fila por una ID de atributo para que sea exacta
+        let filaExistente = tbody.querySelector(`tr[data-km="${km}"]`);
+        if (filaExistente) {
+            filaExistente.remove();
+        }
 
         const row = tbody.insertRow();
+        row.setAttribute('data-km', km); // Marcamos la fila con el KM exacto
         row.innerHTML = `
             <td><b>${km}k</b></td>
-            <td>${formatRitmo(ritmo)}</td>
-            <td>${vel.toFixed(1)}</td>
-            <td style="color:${colchon < 10 ? 'red' : 'green'}; font-weight:bold">${colchon} min</td>
+            <td>${fmtR(r).replace(' min/km','')}</td>
+            <td>${v.toFixed(1)}</td>
+            <td style="color:${c < 10 ? 'red' : 'green'}"><b>${c} min</b></td>
         `;
 
+        // Re-ordenar la tabla siempre por KM
         Array.from(tbody.querySelectorAll("tr"))
-            .sort((a, b) => parseFloat(a.cells[0].innerText) - parseFloat(b.cells[0].innerText))
+            .sort((a, b) => parseFloat(a.getAttribute('data-km')) - parseFloat(b.getAttribute('data-km')))
             .forEach(tr => tbody.appendChild(tr));
     }
 </script>
