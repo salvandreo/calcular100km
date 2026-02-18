@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km - Pro</title>
+    <title>Estratega 100km - Final</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
-        body { font-family: system-ui, sans-serif; padding: 10px; background: #f8fafc; color: #1e293b; font-size: 14px; }
+        body { font-family: system-ui, sans-serif; padding: 10px; background: #f8fafc; color: #1e293b; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
         h2 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.1rem; text-align: center; }
         label { font-weight: bold; font-size: 0.8rem; color: #64748b; display: block; }
@@ -16,9 +16,11 @@
         .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
         .metric-card { background: #f1f5f9; padding: 10px; border-radius: 8px; text-align: center; }
         .val { display: block; font-size: 1rem; font-weight: 800; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75rem; }
-        th { background: #e2e8f0; padding: 8px; text-align: center; }
-        td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center; }
+        /* Estilo de la Tabla */
+        .tabla-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
+        th { background: #f1f5f9; padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: 500; }
         .next-step { background: #f0fdf4; border: 1px solid var(--success); padding: 12px; border-radius: 8px; text-align: center; margin-top: 5px; }
     </style>
 </head>
@@ -57,17 +59,19 @@
 
     <div class="card">
         <h2>📜 Historial de Tramos</h2>
-        <table id="tablaHistorial">
-            <thead>
-                <tr>
-                    <th>KM</th>
-                    <th>Ritmo</th>
-                    <th>Vel.</th>
-                    <th>Colchón</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div class="tabla-container">
+            <table id="tablaHistorial">
+                <thead>
+                    <tr>
+                        <th>KM</th>
+                        <th>Ritmo</th>
+                        <th>Vel.</th>
+                        <th>Colchón</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
 <script>
@@ -145,19 +149,19 @@
         actualizarTabla(actual.km, ritmoTramo, velTramo, margenMin);
     }
 
-    function actualizarTabla(km, ritmo, vel, colchón) {
+    function actualizarTabla(km, ritmo, vel, colchon) {
         const tbody = document.querySelector("#tablaHistorial tbody");
         const filas = tbody.querySelectorAll("tr");
         filas.forEach(f => { if(f.cells[0].innerText == km) f.remove(); });
 
         const row = tbody.insertRow();
         row.innerHTML = `
-            <td>${km}</td>
+            <td><b>${km}k</b></td>
             <td>${formatRitmo(ritmo)}</td>
             <td>${vel.toFixed(1)}</td>
-            <td style="color:${colchón < 10 ? 'red' : 'green'}; font-weight:bold">${colchón} min</td>
+            <td style="color:${colchon < 10 ? 'red' : 'green'}; font-weight:bold">${colchon} min</td>
         `;
-        // Ordenar tabla por KM
+
         Array.from(tbody.querySelectorAll("tr"))
             .sort((a, b) => parseFloat(a.cells[0].innerText) - parseFloat(b.cells[0].innerText))
             .forEach(tr => tbody.appendChild(tr));
