@@ -3,25 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km V8</title>
+    <title>Estratega 100km V9 - Pro</title>
     <style>
-        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
-        body { font-family: system-ui, sans-serif; padding: 10px; background: #f8fafc; color: #1e293b; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; border: 1px solid #e2e8f0; }
+        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; --card-bg: white; --text: #1e293b; }
+        /* Modo Noche Manual y Automático */
+        body.dark-mode { --bg: #0f172a; --card-bg: #1e293b; --text: #f1f5f9; --primary: #3b82f6; }
+        
+        body { font-family: system-ui, sans-serif; padding: 10px; background: var(--bg); color: var(--text); transition: 0.3s; }
+        .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; border: 1px solid #e2e8f0; }
+        
+        /* Barra de Progreso */
+        .progress-container { width: 100%; background: #e2e8f0; height: 12px; border-radius: 6px; margin: 10px 0; overflow: hidden; }
+        #progressBar { width: 0%; height: 100%; background: var(--success); transition: 0.5s; }
+
         h2 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.1rem; text-align: center; }
         label { font-weight: bold; font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px; }
-        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: var(--card-bg); color: var(--text); }
         button { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        
         .res-box { display: none; border-top: 4px solid var(--primary); margin-top: 10px; }
         .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
-        .metric-card { background: #f1f5f9; padding: 10px; border-radius: 8px; text-align: center; }
+        .metric-card { background: rgba(0,0,0,0.05); padding: 10px; border-radius: 8px; text-align: center; }
         .val { display: block; font-size: 1rem; font-weight: 800; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
-        th { background: #f1f5f9; padding: 8px; border-bottom: 2px solid #e2e8f0; text-align: center; }
-        td { padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+        th { background: rgba(0,0,0,0.05); padding: 8px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); text-align: center; }
+        .target-box { background: #f0fdf4; color: #16a34a; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 5px; border: 1px solid #bbf7d0; }
+        body.dark-mode .target-box { background: #064e3b; color: #4ade80; border-color: #065f46; }
     </style>
 </head>
-<body>
+<body onload="checkNightMode()">
+
+    <div class="card">
+        <h2>🏁 Progreso Carrera: <span id="txtProgreso">0%</span></h2>
+        <div class="progress-container"><div id="progressBar"></div></div>
+    </div>
 
     <div class="card">
         <h2>⏱️ Registro de Paso</h2>
@@ -49,14 +66,13 @@
             <div class="metric-card"><span>Vel. Tramo</span><span id="vVel" class="val">-</span></div>
         </div>
         <div id="vColchon" style="text-align:center; padding:10px; font-weight:bold; border-radius:8px;"></div>
+        <div id="vTarget" class="target-box"></div>
     </div>
 
     <div class="card" id="cardHistorial" style="display:none;">
-        <h2>📜 Historial de Tramos</h2>
+        <h2>📜 Historial</h2>
         <table id="tabla">
-            <thead>
-                <tr><th>KM</th><th>Ritmo</th><th>Vel.</th><th>Colchón</th></tr>
-            </thead>
+            <thead><tr><th>KM</th><th>Ritmo</th><th>Vel.</th><th>Colchón</th></tr></thead>
             <tbody></tbody>
         </table>
     </div>
@@ -72,40 +88,62 @@
 
     let historialHoras = { 0: "08:00" };
 
+    function checkNightMode() {
+        const h = new Date().getHours();
+        if (h >= 19 || h < 7) document.body.classList.add('dark-mode');
+    }
+
     function registrar() {
-        const i = document.getElementById('avi').value;
+        const i = parseInt(document.getElementById('avi').value);
         const h = document.getElementById('horaLlegada').value;
         if(!h) return;
 
         historialHoras[i] = h;
         const actual = DATOS[i];
-        
         let antIdx = i - 1;
         while(antIdx >= 0 && !historialHoras[antIdx]) antIdx--;
         
         const fLlegada = parseH(h);
-        const fSalidaAnterior = parseH(historialHoras[antIdx]);
+        const fSalidaAnt = parseH(historialHoras[antIdx]);
         const fCorte = parseH(actual.corte);
 
         const distTramo = actual.km - DATOS[antIdx].km;
-        let tiempoMin = (fLlegada - fSalidaAnterior) / 60000;
-        if(tiempoMin < 0) tiempoMin += 1440;
+        let tMin = (fLlegada - fSalidaAnt) / 60000;
+        if(tMin < 0) tMin += 1440;
 
-        const ritmoDecimal = tiempoMin / distTramo;
-        const velocidad = 60 / ritmoDecimal;
+        const ritmo = tMin / distTramo;
+        const vel = 60 / ritmo;
         const colchon = Math.floor((fCorte - fLlegada) / 60000);
 
+        // Actualizar UI
         document.getElementById('resultado').style.display = 'block';
         document.getElementById('cardHistorial').style.display = 'block';
-        document.getElementById('vRitmo').innerText = fmtR(ritmoDecimal);
-        document.getElementById('vVel').innerText = velocidad.toFixed(1) + " km/h";
+        document.getElementById('vRitmo').innerText = fmtR(ritmo);
+        document.getElementById('vVel').innerText = vel.toFixed(1) + " km/h";
         
+        // Colchón
         const divC = document.getElementById('vColchon');
-        divC.innerText = "COLCHÓN ACTUAL: " + colchon + " MIN";
-        divC.style.background = colchon < 10 ? "#fee2e2" : "#dcfce7";
-        divC.style.color = colchon < 10 ? "red" : "green";
+        divC.innerText = "COLCHÓN: " + colchon + " MIN";
+        divC.style.background = colchon < 10 ? "var(--danger)" : "var(--success)";
+        divC.style.color = "white";
 
-        actualizarTabla(actual.km, ritmoDecimal, velocidad, colchon);
+        // Ritmo Objetivo para siguiente
+        if (i < DATOS.length - 1) {
+            const sig = DATOS[i+1];
+            const distSig = sig.km - actual.km;
+            const fCorteSig = parseH(sig.corte);
+            let tDisp = (fCorteSig - fLlegada) / 60000;
+            if(tDisp < 0) tDisp += 1440;
+            const rNecesario = tDisp / distSig;
+            document.getElementById('vTarget').innerHTML = `Próximo punto: ${distSig}km<br>Ritmo máximo: ${fmtR(rNecesario)}`;
+        }
+
+        // Barra Progreso
+        const porc = Math.round((actual.km / 100) * 100);
+        document.getElementById('progressBar').style.width = porc + "%";
+        document.getElementById('txtProgreso').innerText = porc + "%";
+
+        actualizarTabla(actual.km, ritmo, vel, colchon);
     }
 
     function parseH(s) {
@@ -120,26 +158,13 @@
 
     function actualizarTabla(km, r, v, c) {
         const tbody = document.querySelector("#tabla tbody");
-        
-        // CORRECCIÓN: Buscamos la fila por una ID de atributo para que sea exacta
-        let filaExistente = tbody.querySelector(`tr[data-km="${km}"]`);
-        if (filaExistente) {
-            filaExistente.remove();
-        }
+        let fila = tbody.querySelector(`tr[data-km="${km}"]`);
+        if (fila) fila.remove();
 
         const row = tbody.insertRow();
-        row.setAttribute('data-km', km); // Marcamos la fila con el KM exacto
-        row.innerHTML = `
-            <td><b>${km}k</b></td>
-            <td>${fmtR(r).replace(' min/km','')}</td>
-            <td>${v.toFixed(1)}</td>
-            <td style="color:${c < 10 ? 'red' : 'green'}"><b>${c} min</b></td>
-        `;
-
-        // Re-ordenar la tabla siempre por KM
-        Array.from(tbody.querySelectorAll("tr"))
-            .sort((a, b) => parseFloat(a.getAttribute('data-km')) - parseFloat(b.getAttribute('data-km')))
-            .forEach(tr => tbody.appendChild(tr));
+        row.setAttribute('data-km', km);
+        row.innerHTML = `<td><b>${km}k</b></td><td>${fmtR(r).replace(' min/km','')}</td><td>${v.toFixed(1)}</td><td style="color:${c < 10 ? 'red' : 'green'}"><b>${c}'</b></td>`;
+        Array.from(tbody.querySelectorAll("tr")).sort((a, b) => parseFloat(a.getAttribute('data-km')) - parseFloat(b.getAttribute('data-km'))).forEach(tr => tbody.appendChild(tr));
     }
 </script>
 </body>
