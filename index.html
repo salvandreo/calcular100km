@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km V4</title>
+    <title>Estratega 100km V5</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
         body { font-family: system-ui, sans-serif; padding: 15px; background: #f8fafc; color: #1e293b; }
@@ -24,7 +24,7 @@
     <div class="card">
         <h2>⏱️ Control de Carrera</h2>
         
-        <label>¿Dónde estás?</label>
+        <label>¿En qué punto estás?</label>
         <select id="avi">
             <option value="1">Campos de golf (Km 13)</option>
             <option value="2">Camino la mina (Km 23)</option>
@@ -39,22 +39,18 @@
             <option value="11">Castro (Km 92)</option>
         </select>
 
-        <label>Hora de llegada a este punto:</label>
+        <label>Hora de llegada:</label>
         <input type="time" id="horaLlegada">
 
-        <label>Hora de salida del punto ANTERIOR:</label>
-        <input type="time" id="horaSalidaAnterior" value="08:00">
-        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: -10px;">* Salida inicial: 08:00. Para tramos siguientes, pon la hora a la que saliste del avi anterior.</p>
-
-        <button onclick="calcular()">CALCULAR DATOS</button>
+        <button onclick="calcular()">CALCULAR ESTADO</button>
     </div>
 
     <div id="resultado" class="card res-box">
         <div class="metric-grid">
-            <div class="metric-card"><span>Ritmo Tramo</span><span id="vRitmo" class="val">-</span></div>
+            <div class="metric-card"><span>Ritmo Medio</span><span id="vRitmo" class="val">-</span></div>
             <div class="metric-card"><span>Velocidad</span><span id="vVel" class="val">-</span></div>
             <div class="metric-card"><span>Colchón Corte</span><span id="vMargen" class="val" style="color:var(--success)">-</span></div>
-            <div class="metric-card"><span>Distancia Tramo</span><span id="vDist" class="val">-</span></div>
+            <div class="metric-card"><span>Distancia Total</span><span id="vDist" class="val">-</span></div>
         </div>
         <div id="vSiguiente" class="next-step"></div>
     </div>
@@ -75,7 +71,8 @@
         { n: "Castro", km: 92, corte: "05:30", tBaseSig: 180 }
     ];
 
-    // Función para convertir decimal a MM:SS
+    const HORA_INICIO_CARRERA = "08:00";
+
     function formatRitmo(minutosDecimales) {
         if (!minutosDecimales || minutosDecimales === Infinity) return "00:00";
         const totalSegundos = Math.round(minutosDecimales * 60);
@@ -86,7 +83,6 @@
 
     function parsearFecha(horaStr) {
         const [h, m] = horaStr.split(':').map(Number);
-        // Si la hora es antes de las 08:00, asumimos que es el día siguiente
         const dia = (h < 8) ? 2 : 1;
         return new Date(2026, 0, dia, h, m);
     }
@@ -94,38 +90,34 @@
     function calcular() {
         const i = parseInt(document.getElementById('avi').value);
         const hLlegadaStr = document.getElementById('horaLlegada').value;
-        const hSalidaAntStr = document.getElementById('horaSalidaAnterior').value;
 
-        if (!hLlegadaStr || !hSalidaAntStr) {
-            alert("Por favor, introduce ambas horas.");
+        if (!hLlegadaStr) {
+            alert("Por favor, pon tu hora de llegada.");
             return;
         }
 
         const actual = DATOS[i];
-        const anterior = DATOS[i-1];
-
+        const fechaInicio = parsearFecha(HORA_INICIO_CARRERA);
         const fechaLlegada = parsearFecha(hLlegadaStr);
-        const fechaSalidaAnterior = parsearFecha(hSalidaAntStr);
         const fechaCorte = parsearFecha(actual.corte);
 
-        // 1. Distancia y Tiempo del tramo
-        const distTramo = actual.km - anterior.km;
-        let tiempoTramoMs = fechaLlegada - fechaSalidaAnterior;
+        // 1. Cálculos acumulados desde la salida (km 0)
+        const distTotal = actual.km;
+        let tiempoTotalMs = fechaLlegada - fechaInicio;
         
-        // Corrección si el tramo cruza la medianoche
-        if (tiempoTramoMs < 0) tiempoTramoMs += 24 * 60 * 60 * 1000;
+        // Corrección si cruza la medianoche
+        if (tiempoTotalMs < 0) tiempoTotalMs += 24 * 60 * 60 * 1000;
         
-        const tiempoTramoMin = tiempoTramoMs / 60000;
+        const tiempoTotalMin = tiempoTotalMs / 60000;
 
-        // 2. Ritmo y Velocidad
-        const ritmoDecimal = tiempoTramoMin / distTramo;
+        // 2. Ritmo Medio y Velocidad Media
+        const ritmoDecimal = tiempoTotalMin / distTotal;
         const velocidad = 60 / ritmoDecimal;
 
-        // 3. Margen (Colchón)
-        let margenMs = fechaCorte - fechaLlegada;
-        const margenMinutos = Math.floor(margenMs / 60000);
+        // 3. Margen de corte
+        const margenMinutos = Math.floor((fechaCorte - fechaLlegada) / 60000);
 
-        // 4. Resultado para el siguiente
+        // 4. Tiempo para el siguiente
         const tiempoTotalSiguiente = actual.tBaseSig + margenMinutos;
 
         // Mostrar resultados
@@ -133,12 +125,12 @@
         document.getElementById('vRitmo').innerText = formatRitmo(ritmoDecimal);
         document.getElementById('vVel').innerText = Math.abs(velocidad).toFixed(1) + " km/h";
         document.getElementById('vMargen').innerText = (margenMinutos >= 0 ? "+" : "") + margenMinutos + " min";
-        document.getElementById('vDist').innerText = distTramo + " km";
+        document.getElementById('vDist').innerText = distTotal + " km";
         
         document.getElementById('vSiguiente').innerHTML = `
-            <strong>PRÓXIMO OBJETIVO:</strong><br>
-            Tienes <b>${tiempoTotalSiguiente} min</b> para llegar al siguiente punto.<br>
-            <small>(Base: ${actual.tBaseSig} min + Colchón: ${margenMinutos} min)</small>
+            <strong>OBJETIVO PRÓXIMO PUNTO:</strong><br>
+            Dispones de <b>${tiempoTotalSiguiente} min</b> para llegar.<br>
+            <small>(Margen acumulado: ${margenMinutos} min)</small>
         `;
     }
 </script>
