@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km V3</title>
+    <title>Estratega 100km V4</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
         body { font-family: system-ui, sans-serif; padding: 15px; background: #f8fafc; color: #1e293b; }
         .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
         h2 { margin: 0 0 15px 0; color: var(--primary); font-size: 1.2rem; text-align: center; }
-        label { font-weight: bold; font-size: 0.9rem; color: #64748b; }
-        select, input { width: 100%; padding: 14px; margin: 8px 0 18px 0; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        label { font-weight: bold; font-size: 0.9rem; color: #64748b; display: block; margin-bottom: 5px; }
+        select, input { width: 100%; padding: 14px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
         button { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .res-box { display: none; border-top: 5px solid var(--primary); animation: fadeIn 0.3s; }
+        .res-box { display: none; border-top: 5px solid var(--primary); }
         .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 15px 0; }
         .metric-card { background: #f1f5f9; padding: 12px; border-radius: 10px; text-align: center; }
         .val { display: block; font-size: 1.1rem; font-weight: 800; color: #0f172a; }
         .next-step { background: #f0fdf4; border: 1px solid var(--success); padding: 15px; border-radius: 12px; margin-top: 10px; text-align: center; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>⏱️ Control de Carrera</h2>
-        <label>Punto Actual:</label>
-        <select id="avi" onchange="actualizarPrevia()">
+        
+        <label>¿Dónde estás?</label>
+        <select id="avi">
             <option value="1">Campos de golf (Km 13)</option>
             <option value="2">Camino la mina (Km 23)</option>
             <option value="3">Calle Algorfa COMIDA (Km 32)</option>
@@ -39,12 +39,12 @@
             <option value="11">Castro (Km 92)</option>
         </select>
 
-        <label>Hora de llegada real:</label>
+        <label>Hora de llegada a este punto:</label>
         <input type="time" id="horaLlegada">
 
         <label>Hora de salida del punto ANTERIOR:</label>
         <input type="time" id="horaSalidaAnterior" value="08:00">
-        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: -10px;">* Por defecto es la salida (08:00) o la que anotaste al salir del último avi.</p>
+        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: -10px;">* Salida inicial: 08:00. Para tramos siguientes, pon la hora a la que saliste del avi anterior.</p>
 
         <button onclick="calcular()">CALCULAR DATOS</button>
     </div>
@@ -75,67 +75,71 @@
         { n: "Castro", km: 92, corte: "05:30", tBaseSig: 180 }
     ];
 
-    function formatRitmo(decimalMinutos) {
-        if (decimalMinutos === Infinity || isNaN(decimalMinutos) || decimalMinutos < 0) return "00:00";
-        const mins = Math.floor(decimalMinutos);
-        const segs = Math.round((decimalMinutos - mins) * 60);
-        return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')} min/km`;
+    // Función para convertir decimal a MM:SS
+    function formatRitmo(minutosDecimales) {
+        if (!minutosDecimales || minutosDecimales === Infinity) return "00:00";
+        const totalSegundos = Math.round(minutosDecimales * 60);
+        const mm = Math.floor(totalSegundos / 60);
+        const ss = totalSegundos % 60;
+        return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')} min/km`;
     }
 
-    function parseHora(horaStr, esDia2) {
+    function parsearFecha(horaStr) {
         const [h, m] = horaStr.split(':').map(Number);
-        return new Date(2026, 0, (esDia2 ? 2 : 1), h, m);
+        // Si la hora es antes de las 08:00, asumimos que es el día siguiente
+        const dia = (h < 8) ? 2 : 1;
+        return new Date(2026, 0, dia, h, m);
     }
 
     function calcular() {
         const i = parseInt(document.getElementById('avi').value);
         const hLlegadaStr = document.getElementById('horaLlegada').value;
         const hSalidaAntStr = document.getElementById('horaSalidaAnterior').value;
-        
-        if(!hLlegadaStr || !hSalidaAntStr) return alert("Faltan horas");
+
+        if (!hLlegadaStr || !hSalidaAntStr) {
+            alert("Por favor, introduce ambas horas.");
+            return;
+        }
 
         const actual = DATOS[i];
         const anterior = DATOS[i-1];
 
-        // Lógica de día (Si h < 8 es día 2)
-        const [hLl] = hLlegadaStr.split(':').map(Number);
-        const [hSa] = hSalidaAntStr.split(':').map(Number);
-        
-        const fechaLlegada = parseHora(hLlegadaStr, hLl < 8);
-        const fechaSalidaAnt = parseHora(hSalidaAntStr, hSa < 8 && hSa > 0 || (hLl < 8 && hSa > hLl));
+        const fechaLlegada = parsearFecha(hLlegadaStr);
+        const fechaSalidaAnterior = parsearFecha(hSalidaAntStr);
+        const fechaCorte = parsearFecha(actual.corte);
 
-        // 1. Margen Corte
-        const [ch, cm] = actual.corte.split(':').map(Number);
-        const fechaCorte = parseHora(actual.corte, ch < 8);
-        const margenMinutos = Math.floor((fechaCorte - fechaLlegada) / 60000);
-
-        // 2. Tramo
+        // 1. Distancia y Tiempo del tramo
         const distTramo = actual.km - anterior.km;
-        const tiempoTramoMin = (fechaLlegada - fechaSalidaAnt) / 60000;
+        let tiempoTramoMs = fechaLlegada - fechaSalidaAnterior;
         
-        // Forzar positivo
-        const tiempoFinal = Math.abs(tiempoTramoMin);
-        const ritmoDecimal = tiempoFinal / distTramo;
+        // Corrección si el tramo cruza la medianoche
+        if (tiempoTramoMs < 0) tiempoTramoMs += 24 * 60 * 60 * 1000;
+        
+        const tiempoTramoMin = tiempoTramoMs / 60000;
+
+        // 2. Ritmo y Velocidad
+        const ritmoDecimal = tiempoTramoMin / distTramo;
         const velocidad = 60 / ritmoDecimal;
 
-        // 3. Resultado Siguiente
-        const tiempoTotalAlSig = actual.tBaseSig + margenMinutos;
+        // 3. Margen (Colchón)
+        let margenMs = fechaCorte - fechaLlegada;
+        const margenMinutos = Math.floor(margenMs / 60000);
 
+        // 4. Resultado para el siguiente
+        const tiempoTotalSiguiente = actual.tBaseSig + margenMinutos;
+
+        // Mostrar resultados
         document.getElementById('resultado').style.display = 'block';
         document.getElementById('vRitmo').innerText = formatRitmo(ritmoDecimal);
-        document.getElementById('vVel').innerText = velocidad.toFixed(1) + " km/h";
+        document.getElementById('vVel').innerText = Math.abs(velocidad).toFixed(1) + " km/h";
         document.getElementById('vMargen').innerText = (margenMinutos >= 0 ? "+" : "") + margenMinutos + " min";
-        document.getElementById('vDist').innerText = distTramo.toFixed(1) + " km";
+        document.getElementById('vDist').innerText = distTramo + " km";
         
         document.getElementById('vSiguiente').innerHTML = `
-            <strong>PARA EL SIGUIENTE TRAMO:</strong><br>
-            Dispones de <b style="font-size:1.3rem; color:var(--success)">${tiempoTotalAlSig} min</b> totales.
+            <strong>PRÓXIMO OBJETIVO:</strong><br>
+            Tienes <b>${tiempoTotalSiguiente} min</b> para llegar al siguiente punto.<br>
+            <small>(Base: ${actual.tBaseSig} min + Colchón: ${margenMinutos} min)</small>
         `;
-
-        // Guardar automáticamente la hora de llegada como salida para el próximo si el usuario quiere
-        if(confirm("¿Guardar esta hora como referencia de salida para el siguiente punto?")) {
-            document.getElementById('horaSalidaAnterior').value = hLlegadaStr;
-        }
     }
 </script>
 </body>
