@@ -3,28 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km - 24h</title>
+    <title>Estratega 100km - Pro</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
-        body { font-family: system-ui, sans-serif; padding: 15px; background: #f8fafc; color: #1e293b; }
-        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        h2 { margin: 0 0 15px 0; color: var(--primary); font-size: 1.2rem; text-align: center; }
-        label { font-weight: bold; font-size: 0.9rem; color: #64748b; display: block; margin-bottom: 5px; }
-        select, input { width: 100%; padding: 14px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
-        button { background: var(--primary); color: white; border: none; padding: 18px; width: 100%; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .res-box { display: none; border-top: 5px solid var(--primary); }
-        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 15px 0; }
-        .metric-card { background: #f1f5f9; padding: 12px; border-radius: 10px; text-align: center; }
-        .val { display: block; font-size: 1.1rem; font-weight: 800; color: #0f172a; }
-        .next-step { background: #f0fdf4; border: 1px solid var(--success); padding: 15px; border-radius: 12px; margin-top: 10px; text-align: center; }
+        body { font-family: system-ui, sans-serif; padding: 10px; background: #f8fafc; color: #1e293b; font-size: 14px; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        h2 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.1rem; text-align: center; }
+        label { font-weight: bold; font-size: 0.8rem; color: #64748b; display: block; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .res-box { display: none; border-top: 4px solid var(--primary); }
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+        .metric-card { background: #f1f5f9; padding: 10px; border-radius: 8px; text-align: center; }
+        .val { display: block; font-size: 1rem; font-weight: 800; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.75rem; }
+        th { background: #e2e8f0; padding: 8px; text-align: center; }
+        td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center; }
+        .next-step { background: #f0fdf4; border: 1px solid var(--success); padding: 12px; border-radius: 8px; text-align: center; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>⏱️ Control de Carrera (24h)</h2>
-        
-        <label>¿En qué punto estás?</label>
+        <h2>⏱️ Registro de Paso</h2>
+        <label>Punto de control:</label>
         <select id="avi">
             <option value="1">Campos de golf (Km 13)</option>
             <option value="2">Camino la mina (Km 23)</option>
@@ -38,93 +40,127 @@
             <option value="10">Balsa Conseller (Km 82.5)</option>
             <option value="11">Castro (Km 92)</option>
         </select>
-
         <label>Hora de llegada:</label>
         <input type="time" id="horaLlegada">
-
-        <button onclick="calcular()">CALCULAR ESTADO</button>
+        <button onclick="registrarPaso()">CALCULAR Y GUARDAR</button>
     </div>
 
     <div id="resultado" class="card res-box">
         <div class="metric-grid">
-            <div class="metric-card"><span>Ritmo Medio</span><span id="vRitmo" class="val">-</span></div>
-            <div class="metric-card"><span>Velocidad</span><span id="vVel" class="val">-</span></div>
-            <div class="metric-card"><span>Colchón Corte</span><span id="vMargen" class="val">-</span></div>
-            <div class="metric-card"><span>Distancia Acum.</span><span id="vDist" class="val">-</span></div>
+            <div class="metric-card"><span>Ritmo Tramo</span><span id="vRitmo" class="val">-</span></div>
+            <div class="metric-card"><span>Velocidad Tramo</span><span id="vVel" class="val">-</span></div>
+            <div class="metric-card"><span>Colchón Actual</span><span id="vMargen" class="val">-</span></div>
+            <div class="metric-card"><span>KM Tramo</span><span id="vDist" class="val">-</span></div>
         </div>
         <div id="vSiguiente" class="next-step"></div>
     </div>
 
+    <div class="card">
+        <h2>📜 Historial de Tramos</h2>
+        <table id="tablaHistorial">
+            <thead>
+                <tr>
+                    <th>KM</th>
+                    <th>Ritmo</th>
+                    <th>Vel.</th>
+                    <th>Colchón</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
 <script>
-    // Datos exactos de tu tabla
     const DATOS = [
-        { n: "Salida", km: 0, corte: "08:00", tSiguiente: 180 },
-        { n: "Campos de golf", km: 13, corte: "11:00", tSiguiente: 120 },
-        { n: "Camino la mina", km: 23, corte: "13:00", tSiguiente: 140 },
-        { n: "Calle Algorfa COMIDA", km: 32, corte: "15:20", tSiguiente: 160 },
-        { n: "El canal - Los quiles", km: 39, corte: "18:00", tSiguiente: 50 },
-        { n: "Colegio el altet", km: 47, corte: "18:50", tSiguiente: 170 },
-        { n: "Angelets", km: 58, corte: "21:40", tSiguiente: 100 },
-        { n: "Calle Algorfa CENA", km: 66, corte: "23:20", tSiguiente: 100 }, // Estimado para Niño
-        { n: "Niño del tambor", km: 73, corte: "01:00", tSiguiente: 70 }, 
-        { n: "El rocío", km: 78, corte: "02:10", tSiguiente: 110 },
-        { n: "Balsa Conseller", km: 82.5, corte: "04:00", tSiguiente: 90 },
-        { n: "Castro", km: 92, corte: "05:30", tSiguiente: 150 }
+        { n: "Salida", km: 0, corte: "08:00", tSig: 180 },
+        { n: "Campos de golf", km: 13, corte: "11:00", tSig: 120 },
+        { n: "Camino la mina", km: 23, corte: "13:00", tSig: 140 },
+        { n: "Calle Algorfa COMIDA", km: 32, corte: "15:20", tSig: 160 },
+        { n: "El canal - Los quiles", km: 39, corte: "18:00", tSig: 50 },
+        { n: "Colegio el altet", km: 47, corte: "18:50", tSig: 170 },
+        { n: "Angelets", km: 58, corte: "21:40", tSig: 100 },
+        { n: "Calle Algorfa CENA", km: 66, corte: "23:20", tSig: 100 },
+        { n: "Niño del tambor", km: 73, corte: "01:00", tSig: 70 },
+        { n: "El rocío", km: 78, corte: "02:10", tSig: 110 },
+        { n: "Balsa Conseller", km: 82.5, corte: "04:00", tSig: 90 },
+        { n: "Castro", km: 92, corte: "05:30", tSig: 150 }
     ];
 
-    const INICIO = "08:00";
+    let historialUsuario = { 0: "08:00" }; 
 
     function formatRitmo(decimal) {
         if (!decimal || decimal === Infinity) return "00:00";
         const totalSeg = Math.round(decimal * 60);
         const mm = Math.floor(totalSeg / 60);
         const ss = totalSeg % 60;
-        return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')} min/km`;
+        return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
     }
 
     function aFecha(hStr) {
         const [h, m] = hStr.split(':').map(Number);
-        const dia = (h < 8) ? 2 : 1; // Si es antes de las 8am, es el día 2
+        const dia = (h < 8) ? 2 : 1;
         return new Date(2026, 0, dia, h, m);
     }
 
-    function calcular() {
+    function registrarPaso() {
         const i = parseInt(document.getElementById('avi').value);
         const hLlegadaStr = document.getElementById('horaLlegada').value;
         if (!hLlegadaStr) return;
 
+        historialUsuario[i] = hLlegadaStr;
+
         const actual = DATOS[i];
-        const fInicio = aFecha(INICIO);
+        let idxAnt = i - 1;
+        while (idxAnt >= 0 && !historialUsuario[idxAnt]) { idxAnt--; }
+        
+        const anterior = DATOS[idxAnt];
+        const hSalidaAnt = historialUsuario[idxAnt];
+
         const fLlegada = aFecha(hLlegadaStr);
+        const fSalidaAnt = aFecha(hSalidaAnt);
         const fCorte = aFecha(actual.corte);
 
-        // 1. Cálculos ACUMULADOS (Desde km 0)
-        const distAcum = actual.km;
-        let tiempoTotalMs = fLlegada - fInicio;
-        if (tiempoTotalMs < 0) tiempoTotalMs += 24 * 60 * 60 * 1000;
+        const distTramo = actual.km - anterior.km;
+        let tiempoTramoMs = fLlegada - fSalidaAnt;
+        if (tiempoTramoMs < 0) tiempoTramoMs += 24 * 60 * 60 * 1000;
         
-        const tiempoTotalMin = tiempoTotalMs / 60000;
-        const ritmoMedio = tiempoTotalMin / distAcum;
-        const velMedia = 60 / ritmoMedio;
-
-        // 2. Margen de corte
+        const tiempoTramoMin = tiempoTramoMs / 60000;
+        const ritmoTramo = tiempoTramoMin / distTramo;
+        const velTramo = 60 / ritmoTramo;
         const margenMin = Math.floor((fCorte - fLlegada) / 60000);
 
-        // 3. Resultado
         document.getElementById('resultado').style.display = 'block';
-        document.getElementById('vRitmo').innerText = formatRitmo(ritmoMedio);
-        document.getElementById('vVel').innerText = velMedia.toFixed(1) + " km/h";
-        document.getElementById('vDist').innerText = distAcum + " km";
+        document.getElementById('vRitmo').innerText = formatRitmo(ritmoTramo) + " min/km";
+        document.getElementById('vVel').innerText = velTramo.toFixed(1) + " km/h";
+        document.getElementById('vDist').innerText = distTramo + " km";
         
         const vMargen = document.getElementById('vMargen');
         vMargen.innerText = (margenMin >= 0 ? "+" : "") + margenMin + " min";
         vMargen.style.color = margenMin < 10 ? "var(--danger)" : "var(--success)";
 
         document.getElementById('vSiguiente').innerHTML = `
-            <strong>ESTADO DEL COLCHÓN:</strong><br>
-            Tienes <b>${actual.tSiguiente + margenMin} min</b> para llegar al próximo punto.<br>
-            <small>(Tiempo base tramo + tu adelanto actual)</small>
+            Tienes <b>${actual.tSig + margenMin} min</b> para el siguiente punto.
         `;
+
+        actualizarTabla(actual.km, ritmoTramo, velTramo, margenMin);
+    }
+
+    function actualizarTabla(km, ritmo, vel, colchón) {
+        const tbody = document.querySelector("#tablaHistorial tbody");
+        const filas = tbody.querySelectorAll("tr");
+        filas.forEach(f => { if(f.cells[0].innerText == km) f.remove(); });
+
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td>${km}</td>
+            <td>${formatRitmo(ritmo)}</td>
+            <td>${vel.toFixed(1)}</td>
+            <td style="color:${colchón < 10 ? 'red' : 'green'}; font-weight:bold">${colchón} min</td>
+        `;
+        // Ordenar tabla por KM
+        Array.from(tbody.querySelectorAll("tr"))
+            .sort((a, b) => parseFloat(a.cells[0].innerText) - parseFloat(b.cells[0].innerText))
+            .forEach(tr => tbody.appendChild(tr));
     }
 </script>
 </body>
