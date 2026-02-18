@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estratega 100km V5</title>
+    <title>Estratega 100km - 24h</title>
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; }
         body { font-family: system-ui, sans-serif; padding: 15px; background: #f8fafc; color: #1e293b; }
@@ -22,7 +22,7 @@
 <body>
 
     <div class="card">
-        <h2>⏱️ Control de Carrera</h2>
+        <h2>⏱️ Control de Carrera (24h)</h2>
         
         <label>¿En qué punto estás?</label>
         <select id="avi">
@@ -49,88 +49,81 @@
         <div class="metric-grid">
             <div class="metric-card"><span>Ritmo Medio</span><span id="vRitmo" class="val">-</span></div>
             <div class="metric-card"><span>Velocidad</span><span id="vVel" class="val">-</span></div>
-            <div class="metric-card"><span>Colchón Corte</span><span id="vMargen" class="val" style="color:var(--success)">-</span></div>
-            <div class="metric-card"><span>Distancia Total</span><span id="vDist" class="val">-</span></div>
+            <div class="metric-card"><span>Colchón Corte</span><span id="vMargen" class="val">-</span></div>
+            <div class="metric-card"><span>Distancia Acum.</span><span id="vDist" class="val">-</span></div>
         </div>
         <div id="vSiguiente" class="next-step"></div>
     </div>
 
 <script>
+    // Datos exactos de tu tabla
     const DATOS = [
-        { n: "Salida", km: 0, corte: "08:00", tBaseSig: 180 },
-        { n: "Campos de golf", km: 13, corte: "11:00", tBaseSig: 120 },
-        { n: "Camino la mina", km: 23, corte: "13:00", tBaseSig: 140 },
-        { n: "Calle Algorfa COMIDA", km: 32, corte: "15:20", tBaseSig: 160 },
-        { n: "El canal - Los quiles", km: 39, corte: "18:00", tBaseSig: 50 },
-        { n: "Colegio el altet", km: 47, corte: "18:50", tBaseSig: 170 },
-        { n: "Angelets", km: 58, corte: "21:40", tBaseSig: 100 },
-        { n: "Calle Algorfa CENA", km: 66, corte: "23:20", tBaseSig: 100 },
-        { n: "Niño del tambor", km: 73, corte: "01:00", tBaseSig: 70 },
-        { n: "El rocío", km: 78, corte: "02:10", tBaseSig: 110 },
-        { n: "Balsa Conseller", km: 82.5, corte: "04:00", tBaseSig: 90 },
-        { n: "Castro", km: 92, corte: "05:30", tBaseSig: 180 }
+        { n: "Salida", km: 0, corte: "08:00", tSiguiente: 180 },
+        { n: "Campos de golf", km: 13, corte: "11:00", tSiguiente: 120 },
+        { n: "Camino la mina", km: 23, corte: "13:00", tSiguiente: 140 },
+        { n: "Calle Algorfa COMIDA", km: 32, corte: "15:20", tSiguiente: 160 },
+        { n: "El canal - Los quiles", km: 39, corte: "18:00", tSiguiente: 50 },
+        { n: "Colegio el altet", km: 47, corte: "18:50", tSiguiente: 170 },
+        { n: "Angelets", km: 58, corte: "21:40", tSiguiente: 100 },
+        { n: "Calle Algorfa CENA", km: 66, corte: "23:20", tSiguiente: 100 }, // Estimado para Niño
+        { n: "Niño del tambor", km: 73, corte: "01:00", tSiguiente: 70 }, 
+        { n: "El rocío", km: 78, corte: "02:10", tSiguiente: 110 },
+        { n: "Balsa Conseller", km: 82.5, corte: "04:00", tSiguiente: 90 },
+        { n: "Castro", km: 92, corte: "05:30", tSiguiente: 150 }
     ];
 
-    const HORA_INICIO_CARRERA = "08:00";
+    const INICIO = "08:00";
 
-    function formatRitmo(minutosDecimales) {
-        if (!minutosDecimales || minutosDecimales === Infinity) return "00:00";
-        const totalSegundos = Math.round(minutosDecimales * 60);
-        const mm = Math.floor(totalSegundos / 60);
-        const ss = totalSegundos % 60;
+    function formatRitmo(decimal) {
+        if (!decimal || decimal === Infinity) return "00:00";
+        const totalSeg = Math.round(decimal * 60);
+        const mm = Math.floor(totalSeg / 60);
+        const ss = totalSeg % 60;
         return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')} min/km`;
     }
 
-    function parsearFecha(horaStr) {
-        const [h, m] = horaStr.split(':').map(Number);
-        const dia = (h < 8) ? 2 : 1;
+    function aFecha(hStr) {
+        const [h, m] = hStr.split(':').map(Number);
+        const dia = (h < 8) ? 2 : 1; // Si es antes de las 8am, es el día 2
         return new Date(2026, 0, dia, h, m);
     }
 
     function calcular() {
         const i = parseInt(document.getElementById('avi').value);
         const hLlegadaStr = document.getElementById('horaLlegada').value;
-
-        if (!hLlegadaStr) {
-            alert("Por favor, pon tu hora de llegada.");
-            return;
-        }
+        if (!hLlegadaStr) return;
 
         const actual = DATOS[i];
-        const fechaInicio = parsearFecha(HORA_INICIO_CARRERA);
-        const fechaLlegada = parsearFecha(hLlegadaStr);
-        const fechaCorte = parsearFecha(actual.corte);
+        const fInicio = aFecha(INICIO);
+        const fLlegada = aFecha(hLlegadaStr);
+        const fCorte = aFecha(actual.corte);
 
-        // 1. Cálculos acumulados desde la salida (km 0)
-        const distTotal = actual.km;
-        let tiempoTotalMs = fechaLlegada - fechaInicio;
-        
-        // Corrección si cruza la medianoche
+        // 1. Cálculos ACUMULADOS (Desde km 0)
+        const distAcum = actual.km;
+        let tiempoTotalMs = fLlegada - fInicio;
         if (tiempoTotalMs < 0) tiempoTotalMs += 24 * 60 * 60 * 1000;
         
         const tiempoTotalMin = tiempoTotalMs / 60000;
+        const ritmoMedio = tiempoTotalMin / distAcum;
+        const velMedia = 60 / ritmoMedio;
 
-        // 2. Ritmo Medio y Velocidad Media
-        const ritmoDecimal = tiempoTotalMin / distTotal;
-        const velocidad = 60 / ritmoDecimal;
+        // 2. Margen de corte
+        const margenMin = Math.floor((fCorte - fLlegada) / 60000);
 
-        // 3. Margen de corte
-        const margenMinutos = Math.floor((fechaCorte - fechaLlegada) / 60000);
-
-        // 4. Tiempo para el siguiente
-        const tiempoTotalSiguiente = actual.tBaseSig + margenMinutos;
-
-        // Mostrar resultados
+        // 3. Resultado
         document.getElementById('resultado').style.display = 'block';
-        document.getElementById('vRitmo').innerText = formatRitmo(ritmoDecimal);
-        document.getElementById('vVel').innerText = Math.abs(velocidad).toFixed(1) + " km/h";
-        document.getElementById('vMargen').innerText = (margenMinutos >= 0 ? "+" : "") + margenMinutos + " min";
-        document.getElementById('vDist').innerText = distTotal + " km";
+        document.getElementById('vRitmo').innerText = formatRitmo(ritmoMedio);
+        document.getElementById('vVel').innerText = velMedia.toFixed(1) + " km/h";
+        document.getElementById('vDist').innerText = distAcum + " km";
         
+        const vMargen = document.getElementById('vMargen');
+        vMargen.innerText = (margenMin >= 0 ? "+" : "") + margenMin + " min";
+        vMargen.style.color = margenMin < 10 ? "var(--danger)" : "var(--success)";
+
         document.getElementById('vSiguiente').innerHTML = `
-            <strong>OBJETIVO PRÓXIMO PUNTO:</strong><br>
-            Dispones de <b>${tiempoTotalSiguiente} min</b> para llegar.<br>
-            <small>(Margen acumulado: ${margenMinutos} min)</small>
+            <strong>ESTADO DEL COLCHÓN:</strong><br>
+            Tienes <b>${actual.tSiguiente + margenMin} min</b> para llegar al próximo punto.<br>
+            <small>(Tiempo base tramo + tu adelanto actual)</small>
         `;
     }
 </script>
